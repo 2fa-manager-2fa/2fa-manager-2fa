@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إدارة الحسابات الشاملة | 2FA Manager</title>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
+    <style>
+        :root { --bg-main: #090b14; --panel-bg: rgba(255, 255, 255, 0.04); --border: rgba(255, 255, 255, 0.1); --text-main: #f8fafc; --primary: #00f0ff; --success: #00ff88; --danger: #ff3366; --warning: #ffaa00; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: Tahoma, sans-serif; }
+        body { background-color: var(--bg-main); color: var(--text-main); padding: 20px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+        .container { width: 100%; max-width: 800px; }
+        .glass-panel { background: var(--panel-bg); border: 1px solid var(--border); padding: 20px; border-radius: 16px; margin-bottom: 20px; }
+        .btn { width: 100%; padding: 12px; margin-top: 10px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; color: white; }
+        .btn-google { background: #db4437; }
+        textarea, input { width: 100%; padding: 12px; background: #000; border: 1px solid var(--border); color: #fff; border-radius: 8px; margin-top: 8px; }
+        .account-card { background: rgba(0,0,0,0.3); border: 1px solid var(--border); padding: 15px; border-radius: 12px; margin-bottom: 10px; }
+        .modal { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.9); justify-content: center; align-items: center; z-index: 1000; padding: 20px; }
+        .modal-content { background: #111; padding: 20px; border-radius: 16px; width: 100%; max-width: 400px; }
+    </style>
+</head>
+<body>
+
+    <!-- قسم تسجيل الدخول -->
+    <div class="container" id="login-section">
+        <div class="glass-panel">
+            <h2 style="text-align:center; color:var(--primary);">تسجيل الدخول</h2>
+            <button class="btn btn-google" onclick="loginWithGoogle()">تسجيل الدخول بجوجل</button>
+            <input type="email" id="emailField" placeholder="الإيميل">
+            <input type="password" id="passField" placeholder="الباسورد">
+            <button class="btn" style="background:var(--primary); color:#000;" onclick="loginWithEmail()">تسجيل دخول بريد/باسورد</button>
+        </div>
+    </div>
+
+    <!-- قسم التطبيق الرئيسي -->
+    <div class="container" id="app-section" style="display:none;">
+        <div class="glass-panel">
+            <h3 style="color:var(--primary);">مرحباً بك: <span id="user-display"></span></h3>
+            <textarea id="bulkInput" placeholder="أدخل بيانات الحساب (إيميل، باسورد، استرداد، سنة، مفتاح، رموز...)"></textarea>
+            <button class="btn" style="background:var(--success)" onclick="importAccounts()">إضافة الحسابات</button>
+        </div>
+        <div class="glass-panel" id="cardsContainer"></div>
+    </div>
+
+    <script>
+        const firebaseConfig = { apiKey: "AIzaSyAwwVvGPCVkR5ekWN7XGs2hwGTQ0eP4Am8", authDomain: "fa-manager-59615.firebaseapp.com", projectId: "fa-manager-59615", storageBucket: "fa-manager-59615.appspot.com", messagingSenderId: "38616686936", appId: "1:38616686936:web:922eb72e3c1d74a094852d" };
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+
+        // منطق تسجيل الدخول
+        function loginWithGoogle() { auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()); }
+        function loginWithEmail() { 
+            let e = document.getElementById('emailField').value;
+            let p = document.getElementById('passField').value;
+            auth.signInWithEmailAndPassword(e, p).catch(err => alert(err.message));
+        }
+
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                document.getElementById('login-section').style.display = 'none';
+                document.getElementById('app-section').style.display = 'block';
+                document.getElementById('user-display').innerText = user.email;
+            }
+        });
+
+        // منطق إدارة الحسابات (نفس اللي بعتهولي في كودك الأخير)
+        let savedAccounts = [];
+        function importAccounts() {
+            const input = document.getElementById('bulkInput').value;
+            const lines = input.split('\n');
+            lines.forEach(line => {
+                let parts = line.split(/\t|\s{2,}/);
+                if (parts.length >= 5) {
+                    savedAccounts.push({ email: parts[0], password: parts[1], secret: parts[4], backups: parts.slice(5) });
+                }
+            });
+            renderCards();
+        }
+
+        function renderCards() {
+            const container = document.getElementById('cardsContainer');
+            container.innerHTML = '';
+            savedAccounts.forEach((acc, i) => {
+                container.innerHTML += `<div class="account-card"><p>${acc.email}</p><button class="btn" onclick="alert('${acc.password}')">عرض الباسورد</button></div>`;
+            });
+        }
+    </script>
+</body>
+</html>
